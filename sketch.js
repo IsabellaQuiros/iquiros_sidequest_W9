@@ -8,7 +8,7 @@
     A or D (Left / Right Arrow)   Horizontal movement
     W (Up Arrow)                  Jump
     Space Bar                     Attack
-    ` (Backtick)                  Toggle Debug Menu
+    1 (Number 1)                  Toggle Debug Menu
     M (While in Debug)            Toggle Moon Gravity
 
   Tile key:
@@ -164,7 +164,7 @@ function keyPressed() {
   startMusicIfNeeded();
 
   // Toggle debug menu using the backtick key, matching main.js logic
-  if (key === "`" || key === "Dead") {
+  if (key === "1" || key === "Dead") {
     window.gamePaused = !window.gamePaused;
     return false;
   }
@@ -195,6 +195,16 @@ function draw() {
   camera.off();
   imageMode(CORNER);
   image(bgImg, 0, 0, bgImg.width, bgImg.height);
+
+  // Draw menu text
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textFont("sans-serif"); // Use default font
+
+  textSize(20);
+  text("FOX'S FOREST ADVENTURE", VIEWW / 2, VIEWH / 2 - 30);
+  textSize(10);
+  text("MOVE - ARROW KEYS", 80, VIEWH / 2 - 60);
   camera.on();
 
   // Only run game logic if the debug menu is not open
@@ -295,10 +305,14 @@ function draw() {
         ? color(100, 255, 100)
         : color(255, 100, 100),
     );
-    text(`[M] Moon Gravity: ${gravityStatus}`, VIEWW / 2, VIEWH / 2);
+    text(
+      `[ Press M ] Moon Gravity: ${gravityStatus}`,
+      VIEWW / 2,
+      VIEWH / 2 - 10,
+    );
 
     fill(200);
-    text("Press ` to resume", VIEWW / 2, VIEWH / 2 + 30);
+    text("Press 1 to resume", VIEWW / 2, VIEWH / 2 + 10);
 
     camera.on();
   }
