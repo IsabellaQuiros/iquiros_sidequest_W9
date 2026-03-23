@@ -8,12 +8,20 @@
     A or D (Left / Right Arrow)   Horizontal movement
     W (Up Arrow)                  Jump
     Space Bar                     Attack
+    ` (Backtick)                  Toggle Debug Menu
+    M (While in Debug)            Toggle Moon Gravity
 
   Tile key:
     g = groundTile.png       (surface ground)
     d = groundTileDeep.png   (deep ground, below surface)
       = empty (no sprite)
 */
+
+// --- DEBUG STATE ---
+window.debugState = {
+  moonGravity: false,
+};
+window.gamePaused = false;
 
 let player;
 let playerImg, bgImg;
@@ -154,6 +162,23 @@ function startMusicIfNeeded() {
 
 function keyPressed() {
   startMusicIfNeeded();
+
+  // Toggle debug menu using the backtick key, matching main.js logic
+  if (key === "`" || key === "Dead") {
+    window.gamePaused = !window.gamePaused;
+    return false;
+  }
+
+  // Handle debug menu input if paused
+  if (window.gamePaused) {
+    if (key.toLowerCase() === "m") {
+      window.debugState.moonGravity = !window.debugState.moonGravity;
+
+      // Moon gravity is roughly 1/6th of Earth gravity
+      world.gravity.y = window.debugState.moonGravity ? GRAVITY / 6 : GRAVITY;
+    }
+    return false; // consume the input
+  }
 }
 
 function mousePressed() {
@@ -172,53 +197,109 @@ function draw() {
   image(bgImg, 0, 0, bgImg.width, bgImg.height);
   camera.on();
 
-  // --- PLAYER CONTROLS ---
-  // first check to see if the player is on the ground
-  let grounded = sensor.overlapping(ground);
+  // Only run game logic if the debug menu is not open
+  if (!window.gamePaused) {
+    // Restore proper gravity based on the debug state when unpaused
+    world.gravity.y = window.debugState.moonGravity ? GRAVITY / 6 : GRAVITY;
 
-  // -- ATTACK INPUT --
-  if (grounded && !attacking && kb.presses("space")) {
-    attacking = true;
-    attackFrameCounter = 0;
-    player.vel.x = 0;
-    player.ani.frame = 0;
-    player.ani = "attack";
-    player.ani.play(); // plays once to end
-  }
+    // Resume animations if they were frozen
+    if (player.ani && !player.ani.playing) player.ani.playing = true;
 
-  // -- JUMP --
-  if (grounded && kb.presses("up")) {
-    player.vel.y = -4;
-    if (jumpSfx) jumpSfx.play();
-  }
+    // --- PLAYER CONTROLS ---
+    // first check to see if the player is on the ground
+    let grounded = sensor.overlapping(ground);
 
-  // --- STATE MACHINE ---
-  if (attacking) {
-    attackFrameCounter++;
-    // Attack lasts ~6 frames * frameDelay 2 = 12 cycles (adjust if needed)
-    if (attackFrameCounter > 12) {
-      attacking = false;
+    // -- ATTACK INPUT --
+    if (grounded && !attacking && kb.presses("space")) {
+      attacking = true;
       attackFrameCounter = 0;
+      player.vel.x = 0;
+      player.ani.frame = 0;
+      player.ani = "attack";
+      player.ani.play(); // plays once to end
     }
-  } else if (!grounded) {
-    player.ani = "jump";
-    player.ani.frame = player.vel.y < 0 ? 0 : 1;
-  } else {
-    player.ani = kb.pressing("left") || kb.pressing("right") ? "run" : "idle";
-  }
 
-  // --- MOVEMENT ---
-  if (!attacking) {
-    player.vel.x = 0;
-    if (kb.pressing("left")) {
-      player.vel.x = -1.5;
-      player.mirror.x = true;
-    } else if (kb.pressing("right")) {
-      player.vel.x = 1.5;
-      player.mirror.x = false;
+    // -- JUMP --
+    // Adjust jump velocity logic slightly to feel better in moon gravity if desired,
+    // though this leaves it as default for an authentic floaty feel.
+    if (grounded && kb.presses("up")) {
+      player.vel.y = window.debugState.moonGravity ? -2.5 : -4;
+      if (jumpSfx) jumpSfx.play();
+    }
+
+    // --- STATE MACHINE ---
+    if (attacking) {
+      attackFrameCounter++;
+      // Attack lasts ~6 frames * frameDelay 2 = 12 cycles (adjust if needed)
+      if (attackFrameCounter > 12) {
+        attacking = false;
+        attackFrameCounter = 0;
+      }
+    } else if (!grounded) {
+      player.ani = "jump";
+      player.ani.frame = player.vel.y < 0 ? 0 : 1;
+    } else {
+      player.ani = kb.pressing("left") || kb.pressing("right") ? "run" : "idle";
+    }
+
+    // --- MOVEMENT ---
+    if (!attacking) {
+      player.vel.x = 0;
+      if (kb.pressing("left")) {
+        player.vel.x = -1.5;
+        player.mirror.x = true;
+      } else if (kb.pressing("right")) {
+        player.vel.x = 1.5;
+        player.mirror.x = false;
+      }
+    }
+  } else {
+    // Disable gravity while paused so the player completely freezes mid-air
+    world.gravity.y = 0;
+
+    // Freeze all sprite animations and physics (matches main.js debug pause)
+    for (const s of allSprites) {
+      if (s.ani) s.ani.playing = false;
+      if (s.vel) {
+        s.vel.x = 0;
+        s.vel.y = 0;
+      }
     }
   }
 
   // --- KEEP IN VIEW ---
   player.pos.x = constrain(player.pos.x, FRAME_W / 2, VIEWW - FRAME_W / 2);
+
+  // --- DRAW DEBUG MENU ---
+  if (window.gamePaused) {
+    camera.off();
+
+    // Draw semi-transparent overlay
+    fill(0, 0, 0, 180);
+    noStroke();
+    rect(0, 0, VIEWW, VIEWH);
+
+    // Draw menu text
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textFont("sans-serif"); // Use default font
+
+    textSize(16);
+    text("DEBUG MENU", VIEWW / 2, VIEWH / 2 - 30);
+
+    textSize(10);
+    let gravityStatus = window.debugState.moonGravity ? "ON" : "OFF";
+    // Green for ON, Red for OFF
+    fill(
+      window.debugState.moonGravity
+        ? color(100, 255, 100)
+        : color(255, 100, 100),
+    );
+    text(`[M] Moon Gravity: ${gravityStatus}`, VIEWW / 2, VIEWH / 2);
+
+    fill(200);
+    text("Press ` to resume", VIEWW / 2, VIEWH / 2 + 30);
+
+    camera.on();
+  }
 }
