@@ -204,7 +204,8 @@ function draw() {
   textSize(20);
   text("FOX'S FOREST ADVENTURE", VIEWW / 2, VIEWH / 2 - 30);
   textSize(10);
-  text("MOVE - ARROW KEYS", 80, VIEWH / 2 - 60);
+  text("MOVE = ARROW KEYS", 80, VIEWH / 2 - 60);
+  text("Press 1 for debug screen", 80, VIEWH / 2 - 50);
   camera.on();
 
   // Only run game logic if the debug menu is not open
